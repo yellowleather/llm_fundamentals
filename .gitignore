@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# FAISS index
+rag_application/faiss_doc_idx/
+
+# Gradio
+*.gradio/
