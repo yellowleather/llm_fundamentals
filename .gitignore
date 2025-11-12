@@ -14,3 +14,6 @@ rag_application/faiss_doc_idx/
 
 # Gradio
 *.gradio/
+
+# Generated outputs
+output/

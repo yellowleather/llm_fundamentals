@@ -9,6 +9,7 @@ import traceback
 import warnings
 from pathlib import Path
 from typing import Dict, List
+import json
 
 import gdown
 import gradio as gr
@@ -25,6 +26,7 @@ from openai import OpenAI
 warnings.filterwarnings("ignore")
 
 BASE_DIR = Path(__file__).resolve().parent
+OUTPUT_DIR = BASE_DIR / "output"
 DATASET_ID = "1727UCcg_Nxn9Nbj_LiX8pvGEpo591oxc"
 DATASET_PATH = BASE_DIR / "input" / "ai-medical-chatbot.txt"
 FAISS_DIR = BASE_DIR / "faiss_doc_idx"
@@ -86,6 +88,12 @@ def build_corpus(qa_pairs: Dict[str, str]) -> str:
     return "\n".join(f"{question} {answer}" for question, answer in qa_pairs.items())
 
 
+def write_json(path: Path, data) -> None:
+    """Persist Python data structures as formatted JSON."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2))
+
+
 def chunk_corpus(corpus: str) -> List[str]:
     """Split the corpus into overlapping chunks for embedding."""
     splitter = CharacterTextSplitter(separator="\n", chunk_size=300, chunk_overlap=128, length_function=len)
@@ -131,17 +139,17 @@ def launch_chat_interface(qa_chain: RetrievalQA) -> None:
     def predict(message: str, history: List[List[str]]):
         try:
             if DEBUG:
-                print(f"\n📥 Received message: {message}")
+                print(f"\nReceived message: {message}")
             result = qa_chain({"query": message})
             answer = result["result"]
             if DEBUG:
-                print(f"✅ Retrieved Answer:\n{answer}")
+                print(f"Retrieved Answer:\n{answer}")
             return answer
         except Exception:
             error_trace = traceback.format_exc()
             if DEBUG:
-                print(f"❌ Exception occurred:\n{error_trace}")
-            return "⚠️ Sorry, an internal error occurred. Please try again later."
+                print(f"Exception occurred:\n{error_trace}")
+            return "An internal error occurred. Please try again later."
 
     gr.ChatInterface(
         fn=predict,
@@ -168,7 +176,9 @@ def main() -> None:
     init_openai_client()
     raw_text = ensure_dataset()
     sections = preprocess_sections(raw_text)
+    write_json(OUTPUT_DIR / "sections.json", sections)
     qa_pairs = build_qa_pairs(sections)
+    write_json(OUTPUT_DIR / "qa_pairs.json", qa_pairs)
     corpus = build_corpus(qa_pairs)
     chunks = chunk_corpus(corpus)
     vector_store = build_vector_store(chunks)
